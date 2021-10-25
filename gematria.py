@@ -1,4 +1,5 @@
 ALPHABET = 'abcdefghijklmnopqrstuvwxyz'
+ALPHANUM = 'abcdefghijklmnopqrstuvwxyz0123456789'
 UNICODE = str([chr(i) for i in range(256)])
 
 def numerology(number):
@@ -10,8 +11,8 @@ def numerology(number):
 
 def gematria(word, alphabet=ALPHABET, reverse=False, full_reduce=False):
 	"""Pair letters with numbers."""
-	if alphabet == ALPHABET:
-		alphabet = str(ALPHABET).upper()
+	if alphabet == ALPHABET or ALPHANUM:
+		alphabet = str(alphabet).upper()
 		word = str(word).upper()
 	if reverse:
 		alphabet = alphabet[::-1]
@@ -28,19 +29,71 @@ def gematria(word, alphabet=ALPHABET, reverse=False, full_reduce=False):
 			reduced[letter] = i
 			i += 1
 			if i > n: i = 1
-		return sum([reduced[letter] for letter in word])
+		return sum([reduced[l] if l in alphabet else 0 for l in word])
 	else:
-		return sum([gem[letter] for letter in word])
+		return sum([gem[l] if l in alphabet else 0 for l in word])
 
-def test_all():
-	word = 'gematria'
-	print('Word: gematria')
-	ka = {"alphabet": UNICODE, "reverse": False, "full_reduce": False}
-	print(f'Standard: {gematria(word, **ka)}')
+def full_test(word, alphabet):
+	"""Returns the standard, reduced, and their reverses."""
+	ka = {"reverse": False, "full_reduce": False}
+	if alphabet == 1:
+		ka['alphabet'] = ALPHABET
+	elif alphabet == 2:
+		ka['alphabet'] = ALPHANUM
+	else:
+		ka['alphabet'] = UNICODE
+	standard = gematria(word, **ka)
 	ka['reverse'] = True
-	print(f'Reverse Standard: {gematria(word, **ka)}')
+	reverse_standard = gematria(word, **ka)
 	ka['reverse'] = False
 	ka['full_reduce'] = True
-	print(f'Full Reduction: {gematria(word, **ka)}')
+	full_reduction = gematria(word, **ka)
 	ka['reverse'] = True
-	print(f'Reverse Full Reduction: {gematria(word, **ka)}')
+	reverse_full_reduction = gematria(word, **ka)
+	return [standard, reverse_standard, full_reduction, reverse_full_reduction]
+
+if __name__ == "__main__":
+	import argparse
+	from os import path
+	p = argparse.ArgumentParser()
+	p.add_argument('word', type=str, nargs='*', default='Gematria',
+				   help='Word or statement to check against alphabet.')
+	p.add_argument('--alphabet', type=int, nargs=1, default=1,
+				   help='1=ALPHABET, 2=ALPHANUM, 3=UNICODE.')
+	p.add_argument('--matches', type=int, nargs=1, default=4,
+				   help='Number of matches to display.')
+	args = p.parse_args()
+	matches = int(args.matches)
+	word = ''
+	for w in args.word: word += str(w).upper() + ' '
+	if word[-2:-1] == ' ': word = word[:-2]
+	test_results = full_test(word, args.alphabet)
+	with open(path.abspath('./words.txt'), 'r') as rf:
+		raw_words = rf.readlines()
+	lexicon = dict()
+	for rw in raw_words:
+		r = str(rw).replace("""\n""", "").upper()
+		lexicon[r] = full_test(r, args.alphabet)
+	print(f'{word}: {test_results}')
+	for l, r in lexicon.items():
+		c = 0
+		if test_results[0] == r[0]: c += 1
+		if test_results[1] == r[1]: c += 1
+		if test_results[2] == r[2]: c += 1
+		if test_results[3] == r[3]: c += 1
+		if c == matches:
+			print(f'{l}: {r}')
+	for w in word.split():
+		try:
+			search_results = lexicon[str(w)]
+			print(f'{w}: {search_results}')
+			for l, r in lexicon.items():
+				c = 0
+				if search_results[0] == r[0]: c += 1
+				if search_results[1] == r[1]: c += 1
+				if search_results[2] == r[2]: c += 1
+				if search_results[3] == r[3]: c += 1
+				if c == matches:
+					print(f'{l}: {r}')
+		except:
+			print(f'{w}: not in lexicon.')
