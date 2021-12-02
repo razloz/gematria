@@ -37,13 +37,18 @@ class GematriaApp(toga.App):
                 new_entry = True
         data_entry = {
             'icon': None,
-            'title': 'Data Columns',
-            'subtitle': 'Order matches layout in settings.'
+            'title': '(Normal, Reversed)',
+            'subtitle': f'(Standard) (Reduced) (Sumerian)\n(Jewish) (Fibonacci)'
         }
         results_data = [dict(**data_entry)]
         if not numeric_search:
             data_entry['title'] = search_term
-            data_entry['subtitle'] = f'{search_results}'
+            sr1 = f'({search_results[0]}, {search_results[1]})'
+            sr2 = f'({search_results[2]}, {search_results[3]})'
+            sr3 = f'({search_results[4]}, {search_results[5]})'
+            sr4 = f'({search_results[6]}, {search_results[7]})'
+            sr5 = f'({search_results[8]}, {search_results[9]})'
+            data_entry['subtitle'] = f'{sr1} {sr2} {sr3}\n{sr4} {sr5}'
             results_data.append(dict(**data_entry))
         matched_words = list()
         match_all = self.match_all.is_on
@@ -89,7 +94,12 @@ class GematriaApp(toga.App):
         for word in matched_words:
             lexicon_entry = cat_words[word]
             data_entry['title'] = word
-            data_entry['subtitle'] = f'{lexicon_entry}'
+            sr1 = f'({lexicon_entry[0]}, {lexicon_entry[1]})'
+            sr2 = f'({lexicon_entry[2]}, {lexicon_entry[3]})'
+            sr3 = f'({lexicon_entry[4]}, {lexicon_entry[5]})'
+            sr4 = f'({lexicon_entry[6]}, {lexicon_entry[7]})'
+            sr5 = f'({lexicon_entry[8]}, {lexicon_entry[9]})'
+            data_entry['subtitle'] = f'{sr1} {sr2} {sr3}\n{sr4} {sr5}'
             results_data.append(dict(**data_entry))
         self.results_list.data = results_data
         if new_entry:
