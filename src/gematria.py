@@ -6,7 +6,8 @@ from os import path
 #LATIN = str([chr(i) for i in range(ord('\u0000'), ord('\u007F'))])
 LATIN_UPPER = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'
 LATIN_LOWER = 'abcdefghijklmnopqrstuvwxyz'
-LATIN_FULL = '0123456789' + LATIN_UPPER + LATIN_LOWER
+LATIN_FULL = LATIN_UPPER + LATIN_LOWER
+LATIN_NUMERIC = '0123456789' + LATIN_FULL
 #GREEK = str([chr(i) for i in range(ord('\u0370'), ord('\u03FF'))])
 GREEK_UPPER = 'ΑΒΓΔΕΖΗΘΙΚΛΜΝΞΟΠΡΣΤΥΦΧΨΩ'
 GREEK_LOWER = 'αβγδεζηθικλμνξοπρσςτυφχψω'
@@ -18,6 +19,7 @@ LEXICON_PATH = path.abspath(f'{SRC_PATH}/resources/lexicon.json')
 HIDDEN_PATH = path.abspath(f'{SRC_PATH}/resources/hidden.json')
 FAVORITE_PATH = path.abspath(f'{SRC_PATH}/resources/favorite.json')
 WORDS_PATH = path.abspath(f'{SRC_PATH}/resources/words.txt')
+LOCO_PATH = path.abspath(f'{SRC_PATH}/resources/LOCO.json')
 
 
 def fibonacci(n=26):
@@ -57,7 +59,11 @@ def gematria(word, alphabet=LATIN_UPPER, reverse=False, full_reduce=False, count
     gem = dict()
     i = 1
     incr = 1
-    fib = [i for i in fibonacci(n=len(alphabet))] if count_type == 4 else []
+    f = len(alphabet)
+    nth = int(f * 0.5)
+    nth = nth + 1 if nth * 2 < f else nth
+    fib = [i for i in fibonacci(n=nth)] if count_type == 4 else []
+    fib = fib + fib if len(fib) > 0 else fib
     for letter in alphabet:
         if count_type == 1:
             gem[letter] = i
@@ -90,22 +96,22 @@ def full_test(word):
     """
     Gets every number for given word or statement.
     """
-    standard = gematria(word, reverse=False, full_reduce=False, count_type=1)
-    reverse_standard = gematria(word, reverse=True, full_reduce=False, count_type=1)
-    reduction = gematria(word, reverse=False, full_reduce=True, count_type=1)
-    reverse_reduction = gematria(word, reverse=True, full_reduce=True, count_type=1)
-    sumerian = gematria(word, reverse=False, full_reduce=False, count_type=2)
-    reverse_sumerian = gematria(word, reverse=True, full_reduce=False, count_type=2)
-    jewish = gematria(word, reverse=False, full_reduce=False, count_type=3)
-    reverse_jewish = gematria(word, reverse=True, full_reduce=False, count_type=3)
-    fib_reduced = gematria(word, reverse=False, full_reduce=True, count_type=4)
-    reverse_fib_reduced = gematria(word, reverse=True, full_reduce=True, count_type=4)
+    standard = gematria(word, count_type=1)
+    rev_standard = gematria(word, reverse=True, count_type=1)
+    reduction = gematria(word, full_reduce=True, count_type=1)
+    rev_reduction = gematria(word, reverse=True, full_reduce=True, count_type=1)
+    sumerian = gematria(word, count_type=2)
+    rev_sumerian = gematria(word, reverse=True, count_type=2)
+    jewish = gematria(word, count_type=3)
+    rev_jewish = gematria(word, reverse=True, count_type=3)
+    fib = gematria(word, count_type=4)
+    rev_fib = gematria(word, reverse=True, count_type=4)
     test_results = [
-        standard, reverse_standard,
-        reduction, reverse_reduction,
-        sumerian, reverse_sumerian,
-        jewish, reverse_jewish,
-        fib_reduced, reverse_fib_reduced
+        standard, rev_standard,
+        reduction, rev_reduction,
+        sumerian, rev_sumerian,
+        jewish, rev_jewish,
+        fib, rev_fib
     ]
     return test_results
 
@@ -187,25 +193,3 @@ if __name__ == "__main__":
     if word[-2:-1] == ' ': word = word[:-2]
     test_results = full_test(word)
     print(f'{word}: {test_results}')
-    if not path.exists(HIDDEN_PATH):
-        save_hidden(dict())
-    if not path.exists(FAVORITE_PATH):
-        save_favorite(dict())
-    if not path.exists(LEXICON_PATH):
-        l = list()
-        with open(WORDS_PATH, 'r') as rf:
-            raw_words = rf.readlines()
-        for rw in raw_words:
-            r = str(rw).replace("""\n""", "").upper()
-            for w in r.split():
-                for c in list(w):
-                    if c not in LATIN_UPPER:
-                        w = str(w).replace(c, "")
-                if w not in l:
-                    if len(w) > 0:
-                        l.append(w)
-        u = set(l)
-        lexicon = dict()
-        for r in u:
-            lexicon[r] = full_test(r)
-        save_lexicon(lexicon)
