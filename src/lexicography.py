@@ -1,46 +1,48 @@
+"""
+Module for extracting and filtering words to save in a uniform format.
+"""
 import json
 from gematria import full_test
 from multiprocessing import Process, JoinableQueue, cpu_count
 from os.path import dirname, realpath, abspath
 
-LATIN_UPPER = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'
-LATIN_LOWER = 'abcdefghijklmnopqrstuvwxyz'
-LATIN_FULL = LATIN_UPPER + LATIN_LOWER
-RSRC_PATH = abspath(f'{dirname(realpath(__file__))}/../resources/')
-LEXICON_PATH = abspath(f'{RSRC_PATH}/lexicon.json')
-HIDDEN_PATH = abspath(f'{RSRC_PATH}/hidden.json')
-FAVORITE_PATH = abspath(f'{RSRC_PATH}/favorite.json')
+RSRC_PATH = f'{dirname(realpath(__file__))}/../resources'
 WORDS_PATH = abspath(f'{RSRC_PATH}/words.txt')
 LOCO_PATH = abspath(f'{RSRC_PATH}/LOCO.json')
+HISTORY_PATH = abspath(f'{RSRC_PATH}/history.json')
+LEXICON_PATH = abspath(f'{RSRC_PATH}/lexicon.json')
 CORES = cpu_count()
+WORKERS = dict()
 WORKER_COUNT = range(CORES)
 WORKER_FILES = [abspath(f'{RSRC_PATH}/worker_{i}.words') for i in WORKER_COUNT]
+EN_FULL = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz'
+FILTER = """[]{}|\;:',.<>/?!@#$%^&*()_+-=`~""" + '''"'''
 
 
-def __sanitize_words_list__():
+def __sanitize_words_list__(queue):
     """
     Extract words and phrases from words.txt
     """
     print(f'*** Extracting Words: {WORDS_PATH} ***')
-    with open(WORDS_PATH, 'r') as rf:
-        raw_words = rf.readlines()
+    with open(WORDS_PATH, 'r') as f:
+        raw_words = f.readlines()
     for rw in raw_words:
-        pq.put(rw)
+        queue.put(rw)
 
 
-def __sanitize_loco_list__():
+def __sanitize_loco_list__(queue):
     """
     Extract words and phrases from loco.json
     """
     print(f'*** Extracting Words: {LOCO_PATH} ***')
-    with open(LOCO_PATH, 'r') as rf:
-        raw_data = json.load(rf)
+    with open(LOCO_PATH, 'r') as f:
+        raw_data = json.load(f)
     for entry in raw_data:
-        pq.put(entry['txt'])
+        queue.put(entry['txt'])
 
 
 def __create_lexicon__():
-    print(f'*** Creating The Lexicon: {LEXICON_PATH} ***')
+    print(f'*** Creating the lexicon... ***')
     lexicon = dict()
     all_words = list()
     for worker_id in WORKER_COUNT:
@@ -50,14 +52,16 @@ def __create_lexicon__():
     sorted_words = sorted(set(all_words))
     print(f'*** sorted_words: {len(sorted_words)}')
     for w in sorted_words:
-        if 'WWW' in w or 'HTTP' in w:
-            print(f'*** REMOVED: {w}')
-            continue
+        for skippable in ['WWW','HTTP','HTML']:
+            if skippable in w:
+                continue
         word = w.replace(chr(10), '')
         lexicon[word] = full_test(word)
     with open(LEXICON_PATH, 'w+') as f:
-        f.write(json.dumps(lexicon))
-    print(f'*** Saved lexicon with {len(lexicon.keys())} entries. ***')
+        json.dump(lexicon, f)
+    with open(HISTORY_PATH, 'w+') as f:
+        json.dump(dict(), f)
+    print(f'*** Finished creating the lexicon with {len(lexicon)} entries. ***')
 
 
 def word_sanity(word):
@@ -65,7 +69,7 @@ def word_sanity(word):
     Remove all non-alphabetic characters from word.
     """
     for c in list(word):
-        if c not in LATIN_FULL:
+        if c not in EN_FULL:
             word = word.replace(c, "")
     return word
 
@@ -74,54 +78,54 @@ def append_word(queue, worker_id):
     """
     Worker thread for saving a sanitized group of words and phrases to disk.
     """
-    print(f'*** Worker ID {worker_id} dispatched. ***')
     file_path = WORKER_FILES[worker_id]
+    print(f'*** Worker {worker_id}: {file_path} ***')
     with open(file_path, 'w+') as f:
         while True:
             qg = queue.get()
             if not qg:
                 queue.task_done()
                 break
-            words = f'{qg}'.replace(":", " ").replace(";", " ").split()
+            for fc in FILTER:
+                qg = qg.replace(fc, " ")
+            words = qg.split()
             i = -1
             e = len(words) - 3
             for w in words:
                 i += 1
-                w = word_sanity(w).upper()
-                if len(w) == 0:
+                w = word_sanity(w)
+                w_len = len(w)
+                if w_len < 3 or w_len > 13:
                     continue
-                f.write(f'{w}\n')
+                f.write(f'{w}\n'.upper())
                 if w == w.capitalize() and i < e:
-                    words_two = None
-                    words_three = None
                     w2 = word_sanity(words[i + 1])
-                    if len(w2) == 0:
+                    w2_len = len(w2)
+                    if w2_len < 2 or w2_len > 13:
                         continue
-                    w3 = word_sanity(words[i + 2])
                     if w2 == w2.capitalize() or w2 == 'of':
                         if w2 != 'of':
-                            words_two = f'{w} {w2}'.upper()
-                    if w3 == w3.capitalize() and len(w3) != 0:
-                        words_three = f'{w} {w2} {w3}'.upper()
-                    if words_two:
-                         f.write(f'{words_two}\n')
-                    if words_three:
-                        f.write(f'{words_three}\n')
+                            f.write(f'{w} {w2}\n'.upper())
+                    w3 = word_sanity(words[i + 2])
+                    w3_len = len(w3)
+                    if w3_len < 3 or w3_len > 13:
+                        continue
+                    if w3 == w3.capitalize():
+                        f.write(f'{w} {w2} {w3}\n'.upper())
             queue.task_done()
-    print(f'*** Worker ID {worker_id} got exit code. ***')
+    print(f'*** Worker {worker_id}: got exit signal. ***')
     return False
 
 
 if __name__ == '__main__':
-    pq = JoinableQueue()
-    workers = dict()
-    for worker_id in WORKER_COUNT:
-        workers[worker_id] = Process(target=append_word, args=(pq, worker_id))
-        workers[worker_id].daemon = True
-        workers[worker_id].start()
-    __sanitize_words_list__()
-    __sanitize_loco_list__()
-    for worker_id in WORKER_COUNT:
-        pq.put(None)
-    pq.join()
+    job_queue = JoinableQueue()
+    for wid in WORKER_COUNT:
+        WORKERS[wid] = Process(target=append_word, args=(job_queue, wid))
+        WORKERS[wid].daemon = True
+        WORKERS[wid].start()
+    __sanitize_words_list__(job_queue)
+    __sanitize_loco_list__(job_queue)
+    for wid in WORKER_COUNT:
+        job_queue.put(None)
+    job_queue.join()
     __create_lexicon__()

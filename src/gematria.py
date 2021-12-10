@@ -4,22 +4,16 @@ Gematria Lib
 import json
 from os import path
 #LATIN = str([chr(i) for i in range(ord('\u0000'), ord('\u007F'))])
-LATIN_UPPER = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'
-LATIN_LOWER = 'abcdefghijklmnopqrstuvwxyz'
-LATIN_FULL = LATIN_UPPER + LATIN_LOWER
-LATIN_NUMERIC = '0123456789' + LATIN_FULL
 #GREEK = str([chr(i) for i in range(ord('\u0370'), ord('\u03FF'))])
-GREEK_UPPER = 'ΑΒΓΔΕΖΗΘΙΚΛΜΝΞΟΠΡΣΤΥΦΧΨΩ'
-GREEK_LOWER = 'αβγδεζηθικλμνξοπρσςτυφχψω'
-GREEK_FULL = GREEK_UPPER + GREEK_LOWER
 #HEBREW = str([chr(i) for i in range(ord('\u0590'), ord('\u05FF'))])
-UNICODE = str([chr(i) for i in range(256)])
+#UNICODE = str([chr(i) for i in range(256)])
+EN_UPPER = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'
+EN_LOWER = 'abcdefghijklmnopqrstuvwxyz'
+EN_FULL = EN_UPPER + EN_LOWER
+EN_NUMERIC = EN_FULL + '0123456789'
 SRC_PATH = path.dirname(path.realpath(__file__))
+HISTORY_PATH = path.abspath(f'{SRC_PATH}/resources/history.json')
 LEXICON_PATH = path.abspath(f'{SRC_PATH}/resources/lexicon.json')
-HIDDEN_PATH = path.abspath(f'{SRC_PATH}/resources/hidden.json')
-FAVORITE_PATH = path.abspath(f'{SRC_PATH}/resources/favorite.json')
-WORDS_PATH = path.abspath(f'{SRC_PATH}/resources/words.txt')
-LOCO_PATH = path.abspath(f'{SRC_PATH}/resources/LOCO.json')
 
 
 def fibonacci(n=26):
@@ -47,12 +41,11 @@ def numerology(number, reduce_to=1):
     return int(x)
 
 
-def gematria(word, alphabet=LATIN_UPPER, reverse=False, full_reduce=False, count_type=1):
+def gematria(word, alphabet=EN_UPPER, reverse=False, full_reduce=False, case=1):
     """
     Pair letters with numbers.
     """
-    if alphabet == LATIN_UPPER:
-        alphabet = str(alphabet).upper()
+    if alphabet == EN_UPPER:
         word = str(word).upper()
     if reverse:
         alphabet = alphabet[::-1]
@@ -62,21 +55,21 @@ def gematria(word, alphabet=LATIN_UPPER, reverse=False, full_reduce=False, count
     f = len(alphabet)
     nth = int(f * 0.5)
     nth = nth + 1 if nth * 2 < f else nth
-    fib = [i for i in fibonacci(n=nth)] if count_type == 4 else []
+    fib = [i for i in fibonacci(n=nth)] if case == 4 else []
     fib = fib + fib if len(fib) > 0 else fib
     for letter in alphabet:
-        if count_type == 1:
+        if case == 1:
             gem[letter] = i
             i += 1
-        elif count_type == 2:
+        elif case == 2:
             gem[letter] = i * 6
             i += 1
-        elif count_type == 3:
+        elif case == 3:
             gem[letter] = i
             i += incr
             if i == 10 or i == 100 or i == 1000:
                 incr *= 10
-        elif count_type == 4:
+        elif case == 4:
             gem[letter] = fib[i - 1]
             i += 1
     if full_reduce:
@@ -96,16 +89,16 @@ def full_test(word):
     """
     Gets every number for given word or statement.
     """
-    standard = gematria(word, count_type=1)
-    rev_standard = gematria(word, reverse=True, count_type=1)
-    reduction = gematria(word, full_reduce=True, count_type=1)
-    rev_reduction = gematria(word, reverse=True, full_reduce=True, count_type=1)
-    sumerian = gematria(word, count_type=2)
-    rev_sumerian = gematria(word, reverse=True, count_type=2)
-    jewish = gematria(word, count_type=3)
-    rev_jewish = gematria(word, reverse=True, count_type=3)
-    fib = gematria(word, count_type=4)
-    rev_fib = gematria(word, reverse=True, count_type=4)
+    standard = gematria(word)
+    rev_standard = gematria(word, reverse=True)
+    reduction = gematria(word, full_reduce=True)
+    rev_reduction = gematria(word, reverse=True, full_reduce=True)
+    sumerian = gematria(word, case=2)
+    rev_sumerian = gematria(word, reverse=True, case=2)
+    jewish = gematria(word, case=3)
+    rev_jewish = gematria(word, reverse=True, case=3)
+    fib = gematria(word, case=4)
+    rev_fib = gematria(word, reverse=True, case=4)
     test_results = [
         standard, rev_standard,
         reduction, rev_reduction,
@@ -121,8 +114,8 @@ def save_json(real_path, data):
     Take dict like data and store it as a json object.
     """
     try:
-        with open(real_path, 'w') as wf:
-            wf.write(json.dumps(data))
+        with open(real_path, 'w+') as f:
+            json.dump(data, f)
     except:
         print(f"*** Failed to save data to {real_path} ***")
 
@@ -132,26 +125,19 @@ def load_json(real_path):
     Get dict like data from a json object.
     """
     try:
-        with open(real_path, 'r') as rf:
-            data = dict(json.load(rf))
+        with open(real_path, 'r') as f:
+            data = dict(json.load(f))
         return data
     except:
         print(f"*** Failed to load data from {real_path} ***")
         return None
 
 
-def get_hidden():
+def get_history():
     """
-    Helper function for loading the hidden words.
+    Helper function for loading the search history.
     """
-    return load_json(HIDDEN_PATH)
-
-
-def get_favorite():
-    """
-    Helper function for loading the favorite words.
-    """
-    return load_json(FAVORITE_PATH)
+    return load_json(HISTORY_PATH)
 
 
 def get_lexicon():
@@ -161,18 +147,11 @@ def get_lexicon():
     return load_json(LEXICON_PATH)
 
 
-def save_hidden(data):
+def save_history(data):
     """
-    Helper function for saving the hidden words.
+    Helper function for saving the search history.
     """
-    save_json(HIDDEN_PATH, data)
-
-
-def save_favorite(data):
-    """
-    Helper function for saving the hidden words.
-    """
-    save_json(FAVORITE_PATH, data)
+    save_json(HISTORY_PATH, data)
 
 
 def save_lexicon(data):
