@@ -1,8 +1,6 @@
 """
 Gematria Lib
 """
-import json
-from os import path
 #LATIN = str([chr(i) for i in range(ord('\u0000'), ord('\u007F'))])
 #GREEK = str([chr(i) for i in range(ord('\u0370'), ord('\u03FF'))])
 #HEBREW = str([chr(i) for i in range(ord('\u0590'), ord('\u05FF'))])
@@ -11,9 +9,6 @@ EN_UPPER = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'
 EN_LOWER = 'abcdefghijklmnopqrstuvwxyz'
 EN_FULL = EN_UPPER + EN_LOWER
 EN_NUMERIC = EN_FULL + '0123456789'
-SRC_PATH = path.dirname(path.realpath(__file__))
-HISTORY_PATH = path.abspath(f'{SRC_PATH}/resources/history.json')
-LEXICON_PATH = path.abspath(f'{SRC_PATH}/resources/lexicon.json')
 
 
 def fibonacci(n=26):
@@ -107,58 +102,6 @@ def full_test(word):
         fib, rev_fib
     ]
     return test_results
-
-
-def save_json(real_path, data):
-    """
-    Take dict like data and store it as a json object.
-    """
-    try:
-        with open(real_path, 'w+') as f:
-            json.dump(data, f)
-    except:
-        print(f"*** Failed to save data to {real_path} ***")
-
-
-def load_json(real_path):
-    """
-    Get dict like data from a json object.
-    """
-    try:
-        with open(real_path, 'r') as f:
-            data = dict(json.load(f))
-        return data
-    except:
-        print(f"*** Failed to load data from {real_path} ***")
-        return None
-
-
-def get_history():
-    """
-    Helper function for loading the search history.
-    """
-    return load_json(HISTORY_PATH)
-
-
-def get_lexicon():
-    """
-    Helper function for loading the lexicon.
-    """
-    return load_json(LEXICON_PATH)
-
-
-def save_history(data):
-    """
-    Helper function for saving the search history.
-    """
-    save_json(HISTORY_PATH, data)
-
-
-def save_lexicon(data):
-    """
-    Helper function for saving the hidden words.
-    """
-    save_json(LEXICON_PATH, data)
 
 
 if __name__ == "__main__":
