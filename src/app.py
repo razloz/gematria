@@ -53,9 +53,8 @@ class GematriaApp(toga.App):
         self.__goto_home__()
         return False
 
-    def __do_search__(self, lexical_unit):
-        self._search_term_ = lexical_unit[0]
-        self._search_values_ = lexical_unit[1]
+    def __do_search__(self, search_unit):
+        self._search_unit_ = search_unit
         self.__goto_loading__()
         self._await_thread_ = self.add_background_task(self.__search_lexicon__)
 
@@ -65,11 +64,11 @@ class GematriaApp(toga.App):
         """
         self._results_page_ = list()
         self._current_page_ = 0
-        search_term = self._search_term_.replace(f'\n', '').upper()
+        search_term = self._search_unit_[0]
         if len(search_term) == 0:
             self.__goto_home__()
             return False
-        search_results = self._search_values_
+        search_results = self._search_unit_[1]
         numeric_search = search_term.isnumeric()
         if numeric_search:
             search_term = int(search_term)
@@ -133,29 +132,9 @@ class GematriaApp(toga.App):
             last_page = results_len - 1
             if self._current_page_ > last_page:
                 self._current_page_ = last_page
-        results = self._results_page_[self._current_page_]
-        self.__generate_html__(results, self._search_html_path_)
+        self._lexical_units_ = self._results_page_[self._current_page_]
         self.__goto_search__()
         return False
-
-    def __generate_html__(self, lexical_units, document_path):
-        entry = '<{1} style="text-align:right;white-space:nowrap;color:{2};'
-        entry += 'padding-left:5;padding-right:5" scope="row">{0}</{1}>'
-        html_doc = '<html><body><table><tbody>'
-        s = self._screen_settings_._settings_.values()
-        t = [v['toggled'] for v in s]
-        c = [v['color'] for v in s]
-        for e in lexical_units:
-            k, v = e[0], e[1]
-            html_doc += '<tr>'
-            html_doc += entry.format(k, 'th', 'black')
-            for i in range(len(v)):
-                if t[i]:
-                    html_doc += entry.format(v[i], 'td', c[i])
-            html_doc += '</tr>'
-        html_doc += '</tbody></table></body></html>'
-        with open(document_path, 'w+') as f:
-            f.write(html_doc)
 
     def __load_json__(self, file_path):
         result = dict()
@@ -173,7 +152,10 @@ class GematriaApp(toga.App):
         self.main_window.content = self._screen_home_
 
     def __goto_search__(self, *ignore):
-        self._screen_search_ = SearchScreen(self, self._search_html_path_)
+        if len(self._search_unit_[0]) == 0:
+            self.__goto_home__()
+            return False
+        self._screen_search_ = SearchScreen(self)
         self.main_window.content = self._screen_search_
 
     def __goto_settings__(self, *ignore):
@@ -196,14 +178,15 @@ class GematriaApp(toga.App):
             'Jewish', 'Reverse Jewish',
             'Fibonacci', 'Reverse Fibonacci'
             ]
-        self._search_term_ = ''
-        self._search_values_ = list()
+        self._empty_values_ = ['' for _ in range(len(self._entry_headers_))]
+        self._search_unit_ = ('', self._empty_values_)
+        self._lexical_units_ = (self._search_unit_,)
+        self._clear_search_text_ = False
         self._results_page_ = list()
         self._current_page_ = 0
         self._display_lexical_units_ = 250
         self._absolute_path_ = abspath(dirname(realpath(__file__)))
         self._resources_path_ = f'{self._absolute_path_}/resources'
-        self._search_html_path_ = f'{self._resources_path_}/search_screen.html'
         self._lexicon_path_ = f'{self._resources_path_}/lexicon.json'
         self._cmd_home_ = Command(
             self.__goto_home__,
@@ -243,7 +226,7 @@ class GematriaApp(toga.App):
             )
         self._screen_loading_ = LoadingScreen(self, 'Loading the lexicon...')
         self._screen_settings_ = SettingsScreen(self)
-        self._screen_search_ = SearchScreen(self, self._search_html_path_)
+        self._screen_search_ = SearchScreen(self)
         self._screen_info_ = InfoScreen(self)
         self._screen_home_ = HomeScreen(self)
         self.main_window = toga.MainWindow(title=self.formal_name)
